@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>伴侣满意度测评</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #4a4a4a;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .intro {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .question {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .options {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 12%;
+        }
+        .option input {
+            margin-bottom: 5px;
+        }
+        .option label {
+            font-size: 12px;
+            text-align: center;
+            word-break: break-word;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+        }
+        .category {
+            margin-bottom: 20px;
+        }
+        .category-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .category-score {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .score-bar {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 10px;
+        }
+        .interpretation {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #95a5a6;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>伴侣满意度测评</h1>
+    
+    <div class="intro">
+        <p>本问卷旨在帮助您评估对当前伴侣关系的满意度。请根据您的真实感受选择最符合的选项，从"非常同意"到"非常不同意"共7个等级。完成所有问题后，您将获得一份个性化的评估报告。</p>
+    </div>
+    
+    <div id="loading" class="loading">
+        <p>加载问卷中，请稍候...</p>
+    </div>
+    
+    <form id="surveyForm" style="display: none;">
+        <!-- 问题将在这里动态生成 -->
+    </form>
+    
+    <div id="result">
+        <h2>您的伴侣满意度测评报告</h2>
+        
+        <div class="category">
+            <div class="category-title">情感连接</div>
+            <div class="category-score">
+                <div class="score-bar" id="emotionalBar" style="width: 0%"></div>
+            </div>
+            <div class="interpretation" id="emotionalText"></div>
+        </div>
+        
+        <div class="category">
+            <div class="category-title">冲突解决</div>
+            <div class="category-score">
+                <div class="score-bar" id="conflictBar" style="width: 0%"></div>
+            </div>
+            <div class="interpretation" id="conflictText"></div>
+        </div>
+        
+        <div class="category">
+            <div class="category-title">个人空间</div>
+            <div class="category-score">
+                <div class="score-bar" id="spaceBar" style="width: 0%"></div>
+            </div>
+            <div class="interpretation" id="spaceText"></div>
+        </div>
+        
+        <div class="category">
+            <div class="category-title">价值观匹配</div>
+            <div class="category-score">
+                <div class="score-bar" id="valuesBar" style="width: 0%"></div>
+            </div>
+            <div class="interpretation" id="valuesText"></div>
+        </div>
+        
+        <div class="category">
+            <div class="category-title">亲密关系</div>
+            <div class="category-score">
+                <div class="score-bar" id="intimacyBar" style="width: 0%"></div>
+            </div>
+            <div class="interpretation" id="intimacyText"></div>
+        </div>
+        
+        <div class="category">
+            <div class="category-title">未来信心</div>
+            <div class="category-score">
+                <div class="score-bar" id="futureBar" style="width: 0%"></div>
+            </div>
+            <div class="interpretation" id="futureText"></div>
+        </div>
+        
+        <div class="summary">
+            <h3>总体评价</h3>
+            <p id="summaryText"></p>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>本测评仅供娱乐和自我反思使用，不构成专业心理咨询建议。如需专业帮助，请咨询合格的心理咨询师或关系专家。</p>
+    </div>
+    
+    <script>
+        // 问卷数据结构
+        const surveyData = {
+            categories: [
+                { id: "emotional", name: "情感连接", description: "情感连接是关系中的核心要素" },
+                { id: "conflict", name: "冲突解决", description: "健康的冲突解决能力是长久关系的关键" },
+                { id: "space", name: "个人空间", description: "保持健康的个人空间有助于关系的可持续发展" },
+                { id: "values", name: "价值观匹配", description: "共享的价值观和生活目标是关系稳定的基础" },
+                { id: "intimacy", name: "亲密关系", description: "健康的亲密关系是伴侣满意度的重要组成部分" },
+                { id: "future", name: "未来信心", description: "对未来的信心反映了关系的稳定性" }
+            ],
+            questions: [
+                { id: 1, text: "我的伴侣理解我的情感需求", category: "emotional" },
+                { id: 2, text: "我和伴侣能有效解决冲突", category: "conflict" },
+                { id: 3, text: "我的伴侣尊重我的个人空间和独立性", category: "space" },
+                { id: 4, text: "我们共享相似的价值观和生活目标", category: "values" },
+                { id: 5, text: "我们的性生活是令人满意的", category: "intimacy" },
+                { id: 6, text: "我的伴侣是我最好的朋友", category: "emotional" },
+                { id: 7, text: "我们能够很好地平衡个人时间和相处时间", category: "space" },
+                { id: 8, text: "我对我们关系的未来充满信心", category: "future" },
+                { id: 9, text: "我的伴侣在日常生活中对我表达关爱", category: "emotional" },
+                { id: 10, text: "我们能够坦诚地讨论我们的关系问题", category: "conflict" },
+                { id: 11, text: "我们有共同的兴趣爱好", category: "values" },
+                { id: 12, text: "我的伴侣尊重我的个人决定", category: "space" }
+                // 可以继续添加更多问题...
+            ]
+        };
+
+        // 动态生成问卷
+        function generateSurvey() {
+            const form = document.getElementById('surveyForm');
+            const optionsLabels = [
+                "非常同意", "同意", "有点同意", "中立", 
+                "有点不同意", "不同意", "非常不同意"
+            ];
+            
+            surveyData.questions.forEach((question, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question';
+                
+                const questionText = document.createElement('p');
+                questionText.textContent = `${index + 1}. ${question.text}`;
+                questionDiv.appendChild(questionText);
+                
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options';
+                
+                for (let i = 7; i >= 1; i--) {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'radio';
+                    input.id = `q${question.id}_${i}`;
+                    input.name = `q${question.id}`;
+                    input.value = i;
+                    input.required = true;
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `q${question.id}_${i}`;
+                    label.textContent = optionsLabels[7 - i];
+                    
+                    optionDiv.appendChild(input);
+                    optionDiv.appendChild(label);
+                    optionsDiv.appendChild(optionDiv);
+                }
+                
+                questionDiv.appendChild(optionsDiv);
+                form.appendChild(questionDiv);
+            });
+            
+            const submitButton = document.createElement('button');
+            submitButton.type = 'submit';
+            submitButton.textContent = '获取测评结果';
+            form.appendChild(submitButton);
+            
+            // 隐藏加载提示，显示问卷
+            document.getElementById('loading').style.display = 'none';
+            form.style.display = 'block';
+        }
+
+        // 页面加载完成后生成问卷
+        document.addEventListener('DOMContentLoaded', function() {
+            generateSurvey();
+            
+            document.getElementById('surveyForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // 计算各维度得分
+                const categoryScores = {};
+                surveyData.categories.forEach(cat => {
+                    categoryScores[cat.id] = { sum: 0, count: 0 };
+                });
+                
+                let totalScore = 0;
+                let totalPossible = 0;
+                
+                surveyData.questions.forEach(question => {
+                    const selectedValue = parseInt(document.querySelector(`input[name="q${question.id}"]:checked`).value);
+                    categoryScores[question.category].sum += selectedValue;
+                    categoryScores[question.category].count += 1;
+                    totalScore += selectedValue;
+                    totalPossible += 7; // 每个问题最高7分
+                });
+                
+                // 计算百分比
+                const totalPercent = Math.round((totalScore / totalPossible) * 100);
+                
+                // 更新结果页面
+                surveyData.categories.forEach(cat => {
+                    const avgScore = categoryScores[cat.id].sum / categoryScores[cat.id].count;
+                    const percent = Math.round((avgScore / 7) * 100);
+                    
+                    document.getElementById(`${cat.id}Bar`).style.width = percent + '%';
+                    document.getElementById(`${cat.id}Text`).textContent = 
+                        `${cat.description}。您的${cat.name}得分为${percent}%，${getInterpretationText(cat.id, percent)}`;
+                });
+                
+                document.getElementById('summaryText').textContent = getSummaryText(totalPercent);
+                
+                // 显示结果
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+        
+        function getInterpretationText(categoryId, score) {
+            const interpretations = {
+                emotional: [
+                    "表明您与伴侣之间的情感连接有待加强。考虑增加质量时间，进行更深入的交流。",
+                    "表明您与伴侣之间有良好的情感连接，但仍有提升空间。尝试更多地分享内心感受可能有助于加深这种连接。",
+                    "表明您与伴侣之间有非常深厚的情感纽带，彼此理解和支持。这是非常健康的关系特征。"
+                ],
+                conflict: [
+                    "表明冲突解决可能是您们关系中的一个挑战。考虑学习冲突解决策略或寻求专业指导。",
+                    "表明您们有一定的冲突解决能力，但仍有改进空间。学习积极的沟通技巧可能有所帮助。",
+                    "表明您们能非常有效地处理分歧，这有助于关系的长期稳定。"
+                ],
+                space: [
+                    "表明个人空间可能是您们关系中的一个问题。讨论彼此对独立性和亲密度的需求可能有所帮助。",
+                    "表明您们总体上能尊重彼此的空间，但偶尔可能需要调整平衡。",
+                    "表明您们很好地平衡了亲密与独立，这是成熟关系的标志。"
+                ],
+                values: [
+                    "表明价值观差异可能是您们关系中的一个挑战。开诚布公地讨论各自的核心价值观可能有助于增进理解。",
+                    "表明您们在许多重要方面有共识，但某些领域可能需要更多讨论和妥协。",
+                    "表明您们在核心价值观和生活方向上高度一致，这是长期幸福的重要保障。"
+                ],
+                intimacy: [
+                    "表明这可能是一个需要关注的领域。考虑与伴侣讨论各自的需求和期望。",
+                    "表明您们在这方面的满意度尚可，但可能有提升空间。开放的沟通是关键。",
+                    "表明您们在这方面的满意度很高，这对整体关系质量有积极影响。"
+                ],
+                future: [
+                    "表明您可能对未来感到不确定。识别并讨论这些担忧的来源可能有助于增强关系安全感。",
+                    "表明您对关系未来有一定信心，但可能有些疑虑需要解决。",
+                    "表明您对这段关系的未来非常乐观，这种信心是关系健康的重要指标。"
+                ]
+            };
+            
+            if (score >= 85) return interpretations[categoryId][2];
+            if (score >= 60) return interpretations[categoryId][1];
+            return interpretations[categoryId][0];
+        }
+        
+        function getSummaryText(score) {
+            if (score >= 85) return `根据您的回答，您的总体伴侣满意度为${score}%。这表明您对当前关系非常满意，拥有健康、平衡的伴侣关系。继续保持良好的沟通和相互理解是关键。`;
+            if (score >= 65) return `根据您的回答，您的总体伴侣满意度为${score}%。这表明您对关系基本满意，但某些方面还有提升空间。关注那些得分较低的领域可能会进一步提高整体满意度。`;
+            if (score >= 40) return `根据您的回答，您的总体伴侣满意度为${score}%。这表明您对关系有一些重要的不满。考虑与伴侣坦诚交流这些问题，共同寻找解决方案。`;
+            return `根据您的回答，您的总体伴侣满意度为${score}%。这表明您对当前关系有严重不满。专业的关系咨询可能会帮助您们识别问题并决定最佳的前进方向。`;
+        }
+    </script>
+</body>
+</html>
