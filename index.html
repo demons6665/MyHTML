@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>华为服务器与CPU架构介绍</title>
+    <meta name="description" content="华为服务器产品与CPU架构技术介绍">
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com/3.4.1"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        secondary: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .prose :where(code):not(:where([class~="not-prose"] *)) {
+            background-color: rgba(97, 97, 97, 0.1);
+            padding: 0.2em 0.4em;
+            border-radius: 0.25em;
+            font-size: 0.9em;
+        }
+        .prose :where(code):not(:where([class~="not-prose"] *)):before, 
+        .prose :where(code):not(:where([class~="not-prose"] *)):after {
+            content: "";
+        }
+        .dark .prose :where(code):not(:where([class~="not-prose"] *)) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .chart-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        /* 专业风格增强 */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .section-header {
+            border-left: 4px solid #0ea5e9;
+            padding-left: 1rem;
+            margin-bottom: 2rem;
+        }
+        .data-card {
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .dark .data-card {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .data-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .dark .data-card:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .tech-badge {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .dark .tech-badge {
+            background-color: #075985;
+            color: #e0f2fe;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <header class="py-12">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white">华为服务器与CPU架构</h1>
+                    <p class="mt-2 text-xl text-gray-600 dark:text-gray-400">企业级计算解决方案技术解析</p>
+                </div>
+                <button id="theme-toggle" class="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-moon dark:hidden text-gray-700"></i>
+                    <i class="fas fa-sun hidden dark:block text-yellow-300"></i>
+                </button>
+            </div>
+            <div class="border-t border-b border-gray-200 dark:border-gray-700 py-4">
+                <div class="flex flex-wrap items-center gap-4 text-sm">
+                    <span class="flex items-center text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-tag mr-2"></i>类别: 企业技术
+                    </span>
+                    <span class="flex items-center text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-industry mr-2"></i>领域: 服务器/芯片
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="space-y-16 pb-16">
+            <!-- Huawei Servers Section -->
+            <section data-aos="fade-up">
+                <div class="section-header">
+                    <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">华为服务器产品线</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">全面覆盖从通用计算到AI加速的企业级解决方案</p>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-8">
+                    <!-- TaiShan Section -->
+                    <div class="data-card bg-white dark:bg-gray-800 p-8">
+                        <div class="flex flex-col md:flex-row md:items-start gap-8">
+                            <div class="md:w-1/3">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-3 rounded-lg bg-primary-100 dark:bg-primary-900/20">
+                                        <i class="fas fa-microchip text-primary-600 dark:text-primary-400 text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">TaiShan系列</h3>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-400 mt-3">基于ARM架构的高性能服务器</p>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <span class="tech-badge">ARM架构</span>
+                                    <span class="tech-badge">高性能</span>
+                                    <span class="tech-badge">高能效</span>
+                                </div>
+                                <a href="https://support.huawei.com/enterprise/zh/kunpeng-computing/ts200-pro-2480-pid-252562541" 
+                                   target="_blank" 
+                                   class="inline-flex items-center mt-6 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                                    <i class="fas fa-external-link-alt mr-2"></i>查看产品文档
+                                </a>
+                            </div>
+                            <div class="md:w-2/3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">技术规格</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>芯片: 鲲鹏920系列 (64核/128线程)</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>内存: 8通道DDR4，最高4TB</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>网络: 集成100G RoCE</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>功耗: 180W TDP</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">应用场景</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-database text-blue-500 mt-1 mr-2"></i>
+                                                <span>分布式存储系统</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-cloud text-blue-500 mt-1 mr-2"></i>
+                                                <span>云计算基础设施</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-chart-bar text-blue-500 mt-1 mr-2"></i>
+                                                <span>大数据分析平台</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-network-wired text-blue-500 mt-1 mr-2"></i>
+                                                <span>网络功能虚拟化</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">竞争优势</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-bolt text-yellow-500 mt-1 mr-2"></i>
+                                                <span>卓越的能效比表现</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-shield-alt text-yellow-500 mt-1 mr-2"></i>
+                                                <span>全栈自主可控</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-expand text-yellow-500 mt-1 mr-2"></i>
+                                                <span>高度可扩展架构</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">对标产品</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fab fa-intel text-blue-500 mt-1 mr-2"></i>
+                                                <span>Intel Xeon Silver/Gold系列</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fab fa-amd text-red-500 mt-1 mr-2"></i>
+                                                <span>AMD EPYC 7002系列</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FusionServer Section -->
+                    <div class="data-card bg-white dark:bg-gray-800 p-8">
+                        <div class="flex flex-col md:flex-row md:items-start gap-8">
+                            <div class="md:w-1/3">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-3 rounded-lg bg-primary-100 dark:bg-primary-900/20">
+                                        <i class="fas fa-network-wired text-primary-600 dark:text-primary-400 text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">FusionServer系列</h3>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-400 mt-3">通用计算服务器解决方案</p>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <span class="tech-badge">x86架构</span>
+                                    <span class="tech-badge">灵活配置</span>
+                                    <span class="tech-badge">企业级</span>
+                                </div>
+                            </div>
+                            <div class="md:w-2/3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">技术规格</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>支持Intel Xeon Scalable处理器</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>可选AMD EPYC处理器配置</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>支持双路/四路配置</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>丰富的PCIe扩展能力</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">应用场景</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-server text-blue-500 mt-1 mr-2"></i>
+                                                <span>企业虚拟化平台</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-database text-blue-500 mt-1 mr-2"></i>
+                                                <span>关系型数据库</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-cubes text-blue-500 mt-1 mr-2"></i>
+                                                <span>ERP/CRM系统</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-globe text-blue-500 mt-1 mr-2"></i>
+                                                <span>Web应用服务</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">产品优势</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-tachometer-alt text-yellow-500 mt-1 mr-2"></i>
+                                                <span>智能管理系统</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-sliders-h text-yellow-500 mt-1 mr-2"></i>
+                                                <span>灵活的配置选项</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-shield-alt text-yellow-500 mt-1 mr-2"></i>
+                                                <span>企业级可靠性</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">对标产品</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-server text-blue-500 mt-1 mr-2"></i>
+                                                <span>Dell PowerEdge系列</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-server text-blue-500 mt-1 mr-2"></i>
+                                                <span>HPE ProLiant系列</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Atlas Section -->
+                    <div class="data-card bg-white dark:bg-gray-800 p-8">
+                        <div class="flex flex-col md:flex-row md:items-start gap-8">
+                            <div class="md:w-1/3">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-3 rounded-lg bg-primary-100 dark:bg-primary-900/20">
+                                        <i class="fas fa-brain text-primary-600 dark:text-primary-400 text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Atlas系列</h3>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-400 mt-3">AI计算与加速解决方案</p>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <span class="tech-badge">AI加速</span>
+                                    <span class="tech-badge">异构计算</span>
+                                    <span class="tech-badge">高性能</span>
+                                </div>
+                                <a href="https://support.huawei.com/enterprise/zh/ascend-computing/a800-3000-pid-250743608" 
+                                   target="_blank" 
+                                   class="inline-flex items-center mt-6 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                                    <i class="fas fa-external-link-alt mr-2"></i>查看产品文档
+                                </a>
+                            </div>
+                            <div class="md:w-2/3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">技术规格</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>昇腾(Ascend) AI处理器</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>可选鲲鹏+昇腾组合</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>FP16算力最高256 TFLOPS</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                                <span>310W TDP</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">应用场景</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-robot text-blue-500 mt-1 mr-2"></i>
+                                                <span>机器学习训练</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-brain text-blue-500 mt-1 mr-2"></i>
+                                                <span>深度学习推理</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-chart-line text-blue-500 mt-1 mr-2"></i>
+                                                <span>数据分析与预测</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-eye text-blue-500 mt-1 mr-2"></i>
+                                                <span>计算机视觉应用</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">技术优势</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fas fa-bolt text-yellow-500 mt-1 mr-2"></i>
+                                                <span>强大的矩阵计算能力</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-project-diagram text-yellow-500 mt-1 mr-2"></i>
+                                                <span>优化的AI框架支持</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fas fa-tachometer-alt text-yellow-500 mt-1 mr-2"></i>
+                                                <span>高效能计算架构</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">对标产品</h4>
+                                        <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <li class="flex items-start">
+                                                <i class="fab fa-nvidia text-green-500 mt-1 mr-2"></i>
+                                                <span>NVIDIA DGX系统</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fab fa-intel text-blue-500 mt-1 mr-2"></i>
+                                                <span>Intel Habana Gaudi</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CPU Architecture Section -->
+            <section data-aos="fade-up">
+                <div class="section-header">
+                    <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">CPU架构技术解析</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">现代服务器CPU架构比较与市场分析</p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="data-card bg-white dark:bg-gray-800 p-8">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
+                            <i class="fas fa-desktop mr-3 text-primary-600 dark:text-primary-400"></i>
+                            x86架构技术特点
+                        </h3>
+                        <div class="prose dark:prose-invert max-w-none">
+                            <div class="flex items-start mb-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-primary-600 dark:text-primary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">复杂指令集(CISC)设计</h4>
+                                    <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                                        单条指令可完成复杂操作，指令长度可变，编译器优化空间大
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-start mb-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-primary-600 dark:text-primary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">高性能计算</h4>
+                                    <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                                        高时钟频率，强大的单线程性能，适合传统企业应用
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-start mb-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-primary-600 dark:text-primary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">成熟的生态系统</h4>
+                                    <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                                        广泛的软件兼容性，丰富的开发工具链，完善的企业支持
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-primary-600 dark:text-primary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">主要厂商</h4>
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="tech-badge flex items-center">
+                                            <i class="fab fa-intel mr-1"></i>Intel
+                                        </span>
+                                        <span class="tech-badge flex items-center">
+                                            <i class="fab fa-amd mr-1"></i>AMD
+                                        </span>
+                                        <span class="tech-badge">兆芯</span>
+                                        <span class="tech-badge">海光</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="data-card bg-white dark:bg-gray-800 p-8">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
+                            <i class="fas fa-server mr-3 text-secondary-600 dark:text-secondary-400"></i>
+                            ARM架构技术特点
+                        </h3>
+                        <div class="prose dark:prose-invert max-w-none">
+                            <div class="flex items-start mb-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-secondary-600 dark:text-secondary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">精简指令集(RISC)设计</h4>
+                                    <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                                        指令集精简规整，执行效率高，适合并行处理和多核设计
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-start mb-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-secondary-600 dark:text-secondary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">高能效比</h4>
+                                    <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                                        低功耗设计，每瓦性能优异，适合大规模部署和云计算场景
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-start mb-4">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-secondary-600 dark:text-secondary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">灵活授权模式</h4>
+                                    <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                                        允许厂商自定义设计，支持异构计算，创新空间大
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 mt-1">
+                                    <i class="fas fa-chevron-right text-secondary-600 dark:text-secondary-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="font-medium text-gray-900 dark:text-white">主要厂商</h4>
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="tech-badge flex items-center">
+                                            <i class="fas fa-h-square mr-1"></i>华为
+                                        </span>
+                                        <span class="tech-badge flex items-center">
+                                            <i class="fab fa-aws mr-1"></i>亚马逊
+                                        </span>
+                                        <span class="tech-badge">Ampere</span>
+                                        <span class="tech-badge">飞腾</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="data-card bg-white dark:bg-gray-800 p-8 mt-8">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">服务器CPU市场份额分析</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="serverMarketChart"></canvas>
+                    </div>
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">x86架构优势领域</h4>
+                            <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                                    <span>传统企业应用(数据库、ERP等)</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                                    <span>高性能计算(HPC)</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                                    <span>虚拟化平台</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">ARM架构优势领域</h4>
+                            <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                                    <span>云计算基础设施</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                                    <span>边缘计算场景</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                                    <span>定制化解决方案</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="py-12 border-t border-gray-200 dark:border-gray-700 mt-12">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-copyright text-gray-400"></i>
+                        <span class="text-gray-600 dark:text-gray-400">华为技术有限公司</span>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        <p>本资料仅供参考，产品规格如有变更，恕不另行通知</p>
+                    </div>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                        <i class="fab fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                        <i class="fab fa-linkedin text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                        <i class="fas fa-envelope text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // 初始化AOS动画
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+
+        // 主题切换
+        const themeToggle = document.getElementById('theme-toggle');
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        // 检查本地存储或系统偏好
+        const currentTheme = localStorage.getItem('theme') || 
+                            (prefersDarkScheme.matches ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+        
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+
+        // 图表初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 服务器市场份额图表
+            const serverCtx = document.getElementById('serverMarketChart').getContext('2d');
+            const serverMarketChart = new Chart(serverCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['x86 (Intel)', 'x86 (AMD)', 'ARM (华为/其他)', '其他'],
+                    datasets: [{
+                        data: [65, 20, 12, 3],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(153, 102, 255, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(153, 102, 255, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: window.matchMedia('(prefers-color-scheme: dark)').matches ? '#fff' : '#333',
+                                font: {
+                                    family: 'Inter',
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw}%`;
+                                }
+                            },
+                            bodyFont: {
+                                family: 'Inter',
+                                size: 14
+                            }
+                        }
+                    },
+                    animation: {
+                        animateScale: true,
+                        animateRotate: true
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            // 监听主题变化更新图表
+            themeToggle.addEventListener('click', function() {
+                const isDark = document.documentElement.classList.contains('dark');
+                const textColor = isDark ? '#fff' : '#333';
+                
+                serverMarketChart.options.plugins.legend.labels.color = textColor;
+                serverMarketChart.update();
+            });
+        });
+    </script>
+</body>
+</html>
